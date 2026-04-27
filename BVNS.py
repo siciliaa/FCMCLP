@@ -27,7 +27,7 @@ def shake(graph, solution, k):
     return evaluate_facilities_fast(graph, new_facilities)
 
 
-def bvns(graph, num_facilities, time_limit=1800, num_starts=10, verbose=True):
+def bvns(graph, num_facilities, time_limit=1800, num_starts=10000, verbose=True):
     """
     BVNS with multistart: num_starts runs of the full VNS loop (N=1..kmax),
     each starting from S_best. Stops early if time_limit (global) is reached.
@@ -117,7 +117,7 @@ if __name__ == '__main__':
 
                 start_time = time.time()
 
-                final_solution = bvns(graph, k, time_limit=1800, num_starts=1, verbose=True)
+                final_solution = bvns(graph, k, time_limit=1800, num_starts=10000, verbose=True)
                 final_objective = calculate_objective(graph, final_solution)
                 final_coverage = (final_objective / total_demand) * 100
                 final_nodes = final_solution['open_facilities']
