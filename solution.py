@@ -166,6 +166,85 @@ def open_random_facilities(graph, n):
     return evaluate_facilities_fast(graph, open_facilities)
 
 
+def grasp_constructive(graph, k, alpha=-1):
+    """
+    GRASP constructive: builds k facilities one by one.
+    At each step computes the marginal demand-weighted coverage gain of every
+    candidate respecting its capacity: clients that the facility can cover better
+    than their current best are greedily packed in descending order of marginal
+    gain until the facility's capacity is exhausted. Builds an RCL with all
+    candidates whose gain >= g_max - alpha*(g_max - g_min), and picks one at
+    random.  alpha=0 -> pure greedy, alpha=1 -> pure random.
+    The final set is evaluated with evaluate_facilities_fast to get a feasible
+    solution that respects capacity.
+    """
+    coverage_map = graph['coverage_map']
+    n = len(graph['nodes'])
+    candidates = list(range(n))
+    selected = []
+    best_coverage = [0.0] * n
+    realAlpha = alpha
+    for _ in range(k):
+        if alpha == -1.0:
+            realAlpha = random.random()
+        if not candidates:
+            break
+
+        gains = []
+        for f in candidates:
+            # Capacidad restante de la instalación candidata
+            remaining = graph['nodes'][f][2]
+            gain = 0.0
+
+            # Construimos una lista de clientes que mejorarían si usamos esta instalación
+            improving = []
+            for client, cov in coverage_map[f].items():
+                # Solo nos interesa este cliente si la instalación f le da más cobertura
+                # de la que ya tiene asignada
+                if cov > best_coverage[client]:
+                    peso = graph['nodes'][client][1]
+
+                    # Ganancia marginal: cuánto mejora este cliente respecto a su mejor cobertura actual
+                    marginal = peso * (cov - best_coverage[client])
+
+                    # Carga total que este cliente necesita de la instalación
+                    load = peso * cov
+
+                    improving.append((marginal, load, client))
+
+            # Ordenamos de mayor a menor ganancia marginal
+            # para atender primero a los clientes más rentables (greedy)
+            improving.sort(reverse=True)
+
+            # Recorremos los clientes en orden de rentabilidad
+            # y los asignamos mientras la instalación tenga capacidad
+            for tupla in improving:
+                marginal = tupla[0]
+                load = tupla[1]
+                # tupla[2] sería el cliente, pero aquí no lo necesitamos
+
+                if remaining >= load:
+                    gain += marginal
+                    remaining -= load
+
+            gains.append((gain, f))
+
+        g_max = max(g for g, _ in gains)
+        g_min = min(g for g, _ in gains)
+        threshold = g_max - realAlpha * (g_max - g_min)
+        rcl = [f for g, f in gains if g >= threshold]
+
+        chosen = random.choice(rcl)
+        selected.append(chosen)
+        candidates.remove(chosen)
+
+        for client, cov in coverage_map[chosen].items():
+            if cov > best_coverage[client]:
+                best_coverage[client] = cov
+
+    return evaluate_facilities_fast(graph, selected)
+
+
 def test_evaluate_facilities_equivalence(graph, facilities):
     # In: graph, facilities (list). Out: bool. Comprueba que evaluate_facilities y evaluate_facilities_fast producen el mismo resultado e imprime tiempos.
     t0 = time.perf_counter()

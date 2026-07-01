@@ -1,4 +1,4 @@
-from solution import calculate_objective, open_random_facilities, check_feasibility, evaluate_facilities_fast
+from solution import calculate_objective, open_random_facilities, grasp_constructive, check_feasibility, evaluate_facilities_fast
 from local_search_first_improvement import local_search_first_improvement
 from load_instances import build_instances, build_pmed_instances
 import random
@@ -34,8 +34,13 @@ def bvns(graph, num_facilities, time_limit=1800, num_starts=10000, verbose=True)
     """
     deadline = time.time() + time_limit
     kmax = max(1, math.floor(num_facilities * 0.3))
+    #S_best = None
+    #for i in range(1):
+    #    S = open_random_facilities(graph, num_facilities)
+    #    if S_best is None or calculate_objective(graph,S_best) < calculate_objective(graph,S):
+    #        S_best = S.copy()
 
-    S_best = open_random_facilities(graph, num_facilities)
+    S_best = grasp_constructive(graph, num_facilities)
     S_best = local_search_first_improvement(graph, S_best, deadline, verbose=verbose)
     best_objective = calculate_objective(graph, S_best)
 
@@ -75,14 +80,14 @@ if __name__ == '__main__':
 
     os.makedirs('Resultados', exist_ok=True)
 
-    k_ranges = {
-        'fcmclp324': 7,
-        'fcmclp402': 9,
-        'fcmclp500': 13,
-        'fcmclp708': 15,
-        'fcmclp818': 15,
-        'pmed32': 12,
-        'pmed39': 13,
+    k_values = {
+        'fcmclp324': [1, 4, 7],
+        'fcmclp402': [1, 5, 9],
+        'fcmclp500': [2, 7],
+        'fcmclp708': [2, 8],
+        'fcmclp818': [2, 15],
+        'pmed32':    [1, 6, 12],
+        'pmed39':    [1, 7],
     }
 
     path_cobertura = os.path.join('Resultados', 'cobertura_bvns.txt')
@@ -95,10 +100,9 @@ if __name__ == '__main__':
 
         for graph in graphs.values():
             name = graph['name']
-            if name not in k_ranges:
+            if name not in k_values:
                 continue
 
-            max_k = k_ranges.get(name, 7)
             total_demand = sum(node[1] for node in graph['nodes'])
 
             print(f"\n{'=' * 60}")
@@ -112,7 +116,7 @@ if __name__ == '__main__':
             f_cob.flush()
             f_com.flush()
 
-            for k in range(1, max_k + 1):
+            for k in k_values[name]:
                 print(f"\n  k={k}:")
 
                 start_time = time.time()
